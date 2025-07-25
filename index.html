@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Project Gantt Chart</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .gantt-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .gantt-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .control-group select, 
+        .control-group input {
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .gantt-chart {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            background: white;
+            min-height: 600px;
+        }
+        
+        .task-list {
+            border-right: 2px solid #e9ecef;
+            background: #f8f9fa;
+        }
+        
+        .timeline {
+            overflow-x: auto;
+            background: white;
+            position: relative;
+        }
+        
+        .timeline-header {
+            display: grid;
+            grid-template-columns: repeat(52, 30px);
+            border-bottom: 2px solid #e9ecef;
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            height: 50px;
+        }
+        
+        .week-header {
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #495057;
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .task-info {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            background: white;
+            height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .task-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .task-meta {
+            font-size: 11px;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+        
+        .task-activities {
+            font-size: 11px;
+            color: #6c757d;
+            line-height: 1.2;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-not-started { background: #6c757d; }
+        .status-in-progress { background: #ffc107; }
+        .status-completed { background: #28a745; }
+        .status-delayed { background: #dc3545; }
+        
+        .task-timeline {
+            display: grid;
+            grid-template-columns: repeat(52, 30px);
+            border-bottom: 1px solid #e9ecef;
+            align-items: center;
+            height: 80px;
+            position: relative;
+        }
+        
+        .task-bar {
+            height: 20px;
+            border-radius: 10px;
+            position: relative;
+            margin: 2px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            min-width: 20px;
+        }
+        
+        .task-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            height: 24px;
+        }
+        
+        .dependency-line {
+            position: absolute;
+            border-left: 2px dashed #6c757d;
+            z-index: 1;
+        }
+        
+        .phase-1 { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .phase-2 { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .phase-3 { background: linear-gradient(135deg, #45b7d1, #3498db); }
+        .phase-4 { background: linear-gradient(135deg, #f9ca24, #f0932b); }
+        .phase-5 { background: linear-gradient(135deg, #6c5ce7, #a29bfe); }
+        .phase-6 { background: linear-gradient(135deg, #fd79a8, #fdcb6e); }
+        .phase-7 { background: linear-gradient(135deg, #00b894, #00cec9); }
+        
+        .edit-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 20px;
+            z-index: 1000;
+            display: none;
+            min-width: 400px;
+        }
+        
+        .edit-panel.show {
+            display: block;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .overlay.show {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            height: 60px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        @media (max-width: 768px) {
+            .gantt-chart {
+                grid-template-columns: 250px 1fr;
+            }
+            
+            .timeline-header {
+                grid-template-columns: repeat(52, 25px);
+            }
+            
+            .task-timeline {
+                grid-template-columns: repeat(52, 25px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gantt-container">
+        <div class="gantt-header">
+            <h1>Interactive Project Gantt Chart</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Click on any task bar to edit duration, dependencies, and status</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-row">
+                <button class="btn btn-primary" onclick="recalculateTimeline()">Recalculate Timeline</button>
+                <button class="btn btn-primary" onclick="exportData()">Export Data</button>
+                <button class="btn btn-primary" onclick="resetData()">Reset to Default</button>
+            </div>
+        </div>
+        
+        <div class="gantt-chart">
+            <div class="task-list">
+                <div style="height: 50px; background: #f8f9fa; border-bottom: 2px solid #e9ecef; display: flex; align-items: center; padding: 0 15px; font-weight: 600; color: #495057;">
+                    Project Phases
+                </div>
+                <div id="taskList"></div>
+            </div>
+            
+            <div class="timeline">
+                <div class="timeline-header" id="timelineHeader"></div>
+                <div id="taskTimelines"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Panel -->
+    <div class="overlay" id="overlay" onclick="closeEditPanel()"></div>
+    <div class="edit-panel" id="editPanel">
+        <h3>Edit Task</h3>
+        <form id="editForm">
+            <div class="form-group">
+                <label>Task Name</label>
+                <input type="text" id="editTaskName" readonly>
+            </div>
+            <div class="form-group">
+                <label>Duration (weeks)</label>
+                <input type="number" id="editDuration" min="1" max="20">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="editStatus">
+                    <option value="not-started">Not Started</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="delayed">Delayed</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Dependencies (select prerequisite tasks)</label>
+                <select id="editDependencies" multiple style="height: 100px;">
+                </select>
+                <small style="color: #6c757d;">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+            <div class="form-group">
+                <label>Progress (%)</label>
+                <input type="number" id="editProgress" min="0" max="100" value="0">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="editNotes" placeholder="Add status notes or comments..."></textarea>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-secondary" onclick="closeEditPanel()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveTask()">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let tasks = [
+            {
+                id: 1,
+                name: "1. Discovery and Strategy",
+                activities: "Define goals, assess capabilities, compliance review, map journeys",
+                duration: 4,
+                status: "not-started",
+                dependencies: [],
+                progress: 0,
+                notes: "",
+                startWeek: 1
+            },
+            {
+                id: 2,
+                name: "2. Program Design",
+                activities: "Design services, enrollment/data infrastructure, workflows",
+                duration: 4,
+                status: "not-started",
+                dependencies: [1],
+                progress: 0,
+                notes: "",
+                startWeek: 5
+            },
+            {
+                id: 3,
+                name: "3. Vendor Selection & Contract",
+                activities: "Issue RFP, evaluate and select vendor(s), finalize contracts",
+                duration: 4,
+                status: "not-started",
+                dependencies: [2],
+                progress: 0,
+                notes: "",
+                startWeek: 9
+            },
+            {
+                id: 4,
+                name: "4. Build & Configure Hub",
+                activities: "Build/configure platforms, set communications, train teams",
+                duration: 8,
+                status: "not-started",
+                dependencies: [3],
+                progress: 0,
+                notes: "",
+                startWeek: 13
+            },
+            {
+                id: 5,
+                name: "5. Go-Live Preparation",
+                activities: "UAT, staff readiness, final compliance, marketing prep",
+                duration: 4,
+                status: "not-started",
+                dependencies: [4],
+                progress: 0,
+                notes: "",
+                startWeek: 21
+            },
+            {
+                id: 6,
+                name: "6. Launch and Hypercare",
+                activities: "Launch hub with drug; monitor closely, troubleshoot",
+                duration: 4,
+                status: "not-started",
+                dependencies: [5],
+                progress: 0,
+                notes: "",
+                startWeek: 25
+            },
+            {
+                id: 7,
+                name: "7. Measurement & Optimization",
+                activities: "Collect KPIs, conduct surveys, optimize continuously",
+                duration: 12,
+                status: "not-started",
+                dependencies: [6],
+                progress: 0,
+                notes: "",
+                startWeek: 29
+            }
+        ];
+
+        let currentEditingTask = null;
+
+        function calculateStartWeeks() {
+            tasks.forEach(task => {
+                if (task.dependencies.length === 0) {
+                    task.startWeek = 1;
+                } else {
+                    let maxEndWeek = 0;
+                    task.dependencies.forEach(depId => {
+                        const depTask = tasks.find(t => t.id === depId);
+                        if (depTask) {
+                            const endWeek = depTask.startWeek + depTask.duration - 1;
+                            maxEndWeek = Math.max(maxEndWeek, endWeek);
+                        }
+                    });
+                    task.startWeek = maxEndWeek + 1;
+                }
+            });
+        }
+
+        function renderTimelineHeader() {
+            const header = document.getElementById('timelineHeader');
+            header.innerHTML = '';
+            for (let i = 1; i <= 52; i++) {
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'week-header';
+                weekDiv.textContent = `W${i}`;
+                header.appendChild(weekDiv);
+            }
+        }
+
+        function renderTasks() {
+            calculateStartWeeks();
+            
+            const taskList = document.getElementById('taskList');
+            const taskTimelines = document.getElementById('taskTimelines');
+            
+            taskList.innerHTML = '';
+            taskTimelines.innerHTML = '';
+
+            tasks.forEach((task, index) => {
+                // Render task info
+                const taskInfo = document.createElement('div');
+                taskInfo.className = 'task-info';
+                taskInfo.innerHTML = `
+                    <div class="task-name">
+                        <span class="status-indicator status-${task.status}"></span>
+                        ${task.name}
+                    </div>
+                    <div class="task-meta">
+                        Duration: ${task.duration} weeks | Start: W${task.startWeek} | Progress: ${task.progress}%
+                    </div>
+                    <div class="task-activities">${task.activities}</div>
+                `;
+                taskList.appendChild(taskInfo);
+
+                // Render timeline
+                const timeline = document.createElement('div');
+                timeline.className = 'task-timeline';
+                
+                const taskBar = document.createElement('div');
+                taskBar.className = `task-bar phase-${task.id}`;
+                taskBar.style.gridColumn = `${task.startWeek} / ${task.startWeek + task.duration}`;
+                taskBar.textContent = `${task.duration}w`;
+                taskBar.onclick = () => openEditPanel(task);
+                
+                // Add progress indicator
+                if (task.progress > 0) {
+                    const progressBar = document.createElement('div');
+                    progressBar.style.cssText = `
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        height: 100%;
+                        width: ${task.progress}%;
+                        background: rgba(255,255,255,0.3);
+                        border-radius: inherit;
+                    `;
+                    taskBar.appendChild(progressBar);
+                }
+                
+                timeline.appendChild(taskBar);
+                
+                // Add dependency lines
+                task.dependencies.forEach(depId => {
+                    const depTask = tasks.find(t => t.id === depId);
+                    if (depTask) {
+                        const line = document.createElement('div');
+                        line.className = 'dependency-line';
+                        const depEndWeek = depTask.startWeek + depTask.duration - 1;
+                        line.style.cssText = `
+                            left: ${(depEndWeek - 1) * 30 + 15}px;
+                            top: ${-40}px;
+                            height: 40px;
+                        `;
+                        timeline.appendChild(line);
+                    }
+                });
+                
+                taskTimelines.appendChild(timeline);
+            });
+        }
+
+        function openEditPanel(task) {
+            currentEditingTask = task;
+            
+            document.getElementById('editTaskName').value = task.name;
+            document.getElementById('editDuration').value = task.duration;
+            document.getElementById('editStatus').value = task.status;
+            document.getElementById('editProgress').value = task.progress;
+            document.getElementById('editNotes').value = task.notes;
+            
+            // Populate dependencies dropdown
+            const depsSelect = document.getElementById('editDependencies');
+            depsSelect.innerHTML = '';
+            tasks.forEach(t => {
+                if (t.id !== task.id) {
+                    const option = document.createElement('option');
+                    option.value = t.id;
+                    option.textContent = t.name;
+                    option.selected = task.dependencies.includes(t.id);
+                    depsSelect.appendChild(option);
+                }
+            });
+            
+            document.getElementById('overlay').classList.add('show');
+            document.getElementById('editPanel').classList.add('show');
+        }
+
+        function closeEditPanel() {
+            document.getElementById('overlay').classList.remove('show');
+            document.getElementById('editPanel').classList.remove('show');
+            currentEditingTask = null;
+        }
+
+        function saveTask() {
+            if (!currentEditingTask) return;
+            
+            const duration = parseInt(document.getElementById('editDuration').value);
+            const status = document.getElementById('editStatus').value;
+            const progress = parseInt(document.getElementById('editProgress').value);
+            const notes = document.getElementById('editNotes').value;
+            
+            const selectedDeps = Array.from(document.getElementById('editDependencies').selectedOptions)
+                .map(option => parseInt(option.value));
+            
+            // Update task
+            currentEditingTask.duration = duration;
+            currentEditingTask.status = status;
+            currentEditingTask.dependencies = selectedDeps;
+            currentEditingTask.progress = progress;
+            currentEditingTask.notes = notes;
+            
+            renderTasks();
+            closeEditPanel();
+        }
+
+        function recalculateTimeline() {
+            calculateStartWeeks();
+            renderTasks();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(tasks, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'gantt-chart-data.json';
+            link.click();
+        }
+
+        function resetData() {
+            if (confirm('Are you sure you want to reset all changes?')) {
+                location.reload();
+            }
+        }
+
+        // Initial render
+        renderTimelineHeader();
+        renderTasks();
+    </script>
+</body>
+</html>
